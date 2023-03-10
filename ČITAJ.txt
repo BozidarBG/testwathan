@@ -93,4 +93,5 @@ class UserControllerTest extends TestCase
 //redirektovati na neku stranu, a ta strana je 200
 $res=$this->get('/concerts/'.$concert->id);
 
-gotovo 2.4
+DA BI RADIO TEST ZA VALIDACIJU TIPA BIĆE GREŠKA AKO SE NE DOSTAVI EMAIL, TREBA DA STOJI U VALIDACIJI DA JE EMAIL REQUIRED
+
