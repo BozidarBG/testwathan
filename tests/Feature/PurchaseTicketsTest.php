@@ -38,8 +38,9 @@ class PurchaseTicketsTest extends TestCase
 
     public function test_customer_can_purchase_published_concert_ticket()
     {
-        $this->disableExceptionHandling();
-        $concert=Concert::factory()->published()->create(['ticket_price'=>3250]);
+        //$this->disableExceptionHandling();
+        $concert=Concert::factory()->published()->create(['ticket_price'=>3250])->addTickets(4);
+
 
         $this->orderTickets($concert, [
             'email'=>'john@gmail.com',
@@ -49,11 +50,11 @@ class PurchaseTicketsTest extends TestCase
 
         $this->assertResponseStatus(201);
         //znači da je naplaćeno kupcu
-        $this->assertEquals(9750, $this->payment_gateway->totalCharges());
 
-        $order=$concert->orders()->where('email', 'john@gmail.com')->first();
-        $this->assertNotNull($order);
-        $this->assertEquals('3', $order->tickets->count());
+        $this->assertEquals(9750, $this->payment_gateway->totalCharges());
+        $this->assertTrue($concert->hasOrderFor('john@gmail.com'));
+        $this->assertEquals(3, $concert->ordersFor('john@gmail.com')->first()->ticketsQuantity());
+
 
     }
 
@@ -61,8 +62,8 @@ class PurchaseTicketsTest extends TestCase
 
         //dole skidamo komentar ako želimo da vidimo koji je exception (bio je model not foun)
         //a pošto želimo da laravel prebaci u 404, ne treba disableExceptionHandling
-
-        $concert=Concert::factory()->unpublished()->create();
+        //$this->disableExceptionHandling();
+        $concert=Concert::factory()->unpublished()->create()->addTickets(3);
 
         $this->orderTickets($concert, [
             'email'=>'john@gmail.com',
@@ -71,8 +72,7 @@ class PurchaseTicketsTest extends TestCase
         ]);
 
         $this->assertResponseStatus(404);
-        //u bazi nemamo nijedan red sa orderima (jer je uvek refresh db)
-        $this->assertEquals(0, $concert->orders()->count());
+        $this->assertFalse($concert->hasOrderFor('john@gmail.com'));
 
         //znači da nije naplaćeno kupcu
         $this->assertEquals(0, $this->payment_gateway->totalCharges());
@@ -82,7 +82,7 @@ class PurchaseTicketsTest extends TestCase
     public function test_email_is_required_to_purchase_tickets(){
         //$this->disableExceptionHandling();
 
-        $concert=Concert::factory()->published()->create();
+        $concert=Concert::factory()->published()->create()->addTickets(3);
 
         $this->orderTickets($concert, [
             'ticket_quantity'=>3,
@@ -96,6 +96,7 @@ class PurchaseTicketsTest extends TestCase
 
     public function test_email_must_be_valid_to_purchase_tickets(){
         $concert=Concert::factory()->published()->create();
+        $concert->addTickets(3);
 
         $this->orderTickets($concert, [
             'email'=>'nije mail',
@@ -108,6 +109,7 @@ class PurchaseTicketsTest extends TestCase
 
     public function test_ticket_quantity_is_required_to_purchase_tickets(){
         $concert=Concert::factory()->published()->create();
+        $concert->addTickets(3);
 
         $this->orderTickets($concert, [
             'email'=>'nije mail',
@@ -119,6 +121,7 @@ class PurchaseTicketsTest extends TestCase
 
     public function test_ticket_quantity_must_be_at_least_one_to_purchase_tickets(){
         $concert=Concert::factory()->published()->create();
+        $concert->addTickets(3);
 
         $this->orderTickets($concert, [
             'email'=>'jeste@email.com',
@@ -131,6 +134,7 @@ class PurchaseTicketsTest extends TestCase
 
     public function test_payment_token_is_required_to_purchase_tickets(){
         $concert=Concert::factory()->published()->create();
+        $concert->addTickets(3);
 
         $this->orderTickets($concert, [
             'email'=>'jeste@email.com',
@@ -146,7 +150,7 @@ class PurchaseTicketsTest extends TestCase
         //sprečavamo laravel da konvertuje exception u http response
         $this->disableExceptionHandling();
 
-        $concert=Concert::factory()->published()->create(['ticket_price'=>3250]);
+        $concert=Concert::factory()->published()->create(['ticket_price'=>3250])->addTickets(2);
 
         $this->orderTickets($concert, [
             'email'=>'john@gmail.com',
@@ -155,8 +159,24 @@ class PurchaseTicketsTest extends TestCase
         ]);
 
         $this->assertResponseStatus(422);
-        $order=$concert->orders()->where('email', 'john@gmail.com')->first();
-        $this->assertNull($order);
+       // $order=$concert->orders()->where('email', 'john@gmail.com')->first();
+        $this->assertFalse($concert->hasOrderFor('john@gmail.com'));
+    }
+
+    public function test_cannot_purchase_more_tickets_than_remain(){
+        //$this->disableExceptionHandling();
+        $concert=Concert::factory()->published()->create()->addTickets(50);
+
+        $this->orderTickets($concert, [
+            'email'=>'john@gmail.com',
+            'ticket_quantity'=>51,
+            'payment_token'=>$this->payment_gateway->getValidToken()
+        ]);
+
+        $this->assertResponseStatus(422);
+        $this->assertFalse($concert->hasOrderFor('john@gmail.com'));///proveravamo da nije kreiran order
+        $this->assertEquals(0, $this->payment_gateway->totalCharges());//da nije naplaćeno korisniku
+        $this->assertEquals(50, $concert->ticketsRemaining()); //da je ostalo i dalje 50 karata
     }
 
 

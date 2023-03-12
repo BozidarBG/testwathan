@@ -14,4 +14,18 @@ class Order extends Model
     public function tickets(){
         return $this->hasMany(Ticket::class);
     }
+
+    public function cancel(){
+        //prvo brišemo sve kupljene tikete za ovaj order
+        foreach($this->tickets as $ticket){
+            $ticket->release();
+        }
+
+        //onda brišemo i ovaj order
+        $this->delete();
+    }
+
+    public function ticketsQuantity(){
+        return $this->tickets()->count();
+    }
 }

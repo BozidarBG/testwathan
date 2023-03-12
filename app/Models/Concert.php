@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\NotEnoughTicketsException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -33,14 +34,45 @@ class Concert extends Model
         return $this->hasMany(Order::class);
     }
 
+    //vrv samo za testiranje
+    public function hasOrderFor($customer_email){
+        return $this->orders()->where('email', $customer_email)->count() > 0;
+    }
+    //vrv samo za testiranje
+    public function ordersFor($customer_email){
+        return $this->orders()->where('email', $customer_email)->get();
+    }
+
+    public function tickets(){
+        return $this->hasMany(Ticket::class);
+    }
+
     public function orderTickets($email, $ticket_quantity){
+
+        $tickets=$this->tickets()->available()->take($ticket_quantity)->get();
+
+        if($tickets->count() < $ticket_quantity){
+            throw new NotEnoughTicketsException;
+        }
+
         $order=$this->orders()->create(['email'=>$email]);
 
-        foreach (range(1, $ticket_quantity) as $i){
-            $order->tickets()->create([
+        foreach ($tickets as $ticket){
+            $order->tickets()->save($ticket);
+        }
+        return $order;
+    }
+
+    public function addTickets($quantity){
+        foreach (range(1, $quantity) as $i) {
+            $this->tickets()->create([
 
             ]);
         }
-        return $order;
+        return $this;
+    }
+
+    public function ticketsRemaining(){
+        return $this->tickets()->available()->count();
     }
 }

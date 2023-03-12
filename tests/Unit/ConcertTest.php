@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\NotEnoughTicketsException;
 use App\Models\Concert;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
@@ -45,11 +46,63 @@ class ConcertTest extends TestCase
     }
 
     public function test_user_can_order_tickets(){
-        $concert=Concert::factory()->published()->create();
+        $concert=Concert::factory()->published()->create()->addTickets(3);
 
         $order=$concert->orderTickets('glup@gmail.com', 3);
 
         $this->assertEquals('glup@gmail.com', $order->email);
-        $this->assertEquals(3, $order->tickets()->count());
+        $this->assertEquals(3, $order->ticketsQuantity());
+    }
+
+    public function test_can_add_tickets(){
+        $concert=Concert::factory()->published()->create()->addTickets(50);
+
+        $this->assertEquals(50, $concert->ticketsRemaining());
+
+    }
+
+    public function test_tickets_remaining_does_not_include_tickets_associated_with_an_order(){
+        $concert=Concert::factory()->published()->create();
+        $concert->addTickets(50);
+        $concert->orderTickets('glup@gmail.com', 30);
+
+        $this->assertEquals(20, $concert->ticketsRemaining());
+    }
+
+    public function test_trying_to_purchase_more_tickets_than_remaining_throws_an_ecxeption(){
+        $concert=Concert::factory()->published()->create()->addTickets(10);
+
+
+        try{
+            $concert->orderTickets('glup@gmail.com', 11);
+        }catch(NotEnoughTicketsException $e){
+            $this->assertFalse($concert->hasOrderFor('glup@gmail.com'));
+
+            $this->assertEquals(10, $concert->ticketsRemaining());
+
+            return;
+        }
+
+        $this->fail('order succeded iako nemamo dovoljno karata');
+    }
+
+    public function test_cannot_order_tickets_that_have_already_been_purchsed(){
+        $concert=Concert::factory()->published()->create()->addTickets(10);
+
+        $concert->orderTickets('glup@gmail.com', 8);
+
+
+        try{
+            $concert->orderTickets('lebron@gmail.com', 3);
+        }catch(NotEnoughTicketsException $e){
+            $this->assertFalse($concert->hasOrderFor('lebron@gmail.com'));
+
+            $this->assertEquals(2, $concert->ticketsRemaining());
+
+            return;
+        }
+
+        $this->fail('order succeded iako nemamo dovoljno karata 2');
+
     }
 }
