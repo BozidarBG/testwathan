@@ -25,7 +25,14 @@ class PurchaseTicketsTest extends TestCase
     }
 
     private function orderTickets($concert, $params){
+        //kod mene je bilo dobro i bez ovoga. ne znam što kod njega nije radilo. to su neki laravelovi sub requestovi koje ne kapiram...
+        $savedRequest=$this->app['request'];
+
+
         $this->json('POST', "/concerts/{$concert->id}/orders", $params);
+
+        $this->app['request']=$savedRequest;
+
     }
 
     private function customAssertValidationError($field){
@@ -36,7 +43,7 @@ class PurchaseTicketsTest extends TestCase
         $this->response->assertJsonValidationErrors($field);
     }
 
-    public function test_customer_can_purchase_published_concert_ticket()
+    public function test_customer_can_purchase_tickets_to_published_concert()
     {
         //$this->disableExceptionHandling();
         $concert=Concert::factory()->published()->create(['ticket_price'=>3250])->addTickets(4);
@@ -49,11 +56,20 @@ class PurchaseTicketsTest extends TestCase
         ]);
 
         $this->assertResponseStatus(201);
-        //znači da je naplaćeno kupcu
+        //stavio je assertJsonSubset ali to je zamenjeno sa assertJson.i to ne valja. jer uvek vraća da prolazi test...
+
+        $this->assertJsonStringEqualsJsonString(json_encode(
+            [
+            'email'=>'john@gmail.com',
+            'ticket_quantity'=>3,
+            'amount'=>9750
+            ]
+        ), $this->response->getContent());
 
         $this->assertEquals(9750, $this->payment_gateway->totalCharges());
         $this->assertTrue($concert->hasOrderFor('john@gmail.com'));
         $this->assertEquals(3, $concert->ordersFor('john@gmail.com')->first()->ticketsQuantity());
+        //dd($this->response->content());
 
 
     }
@@ -148,7 +164,7 @@ class PurchaseTicketsTest extends TestCase
 
         //kad javi da očekujemo 422 a lara da 500 onda moramo da enejblujemo ovo ispod
         //sprečavamo laravel da konvertuje exception u http response
-        $this->disableExceptionHandling();
+        //$this->disableExceptionHandling();
 
         $concert=Concert::factory()->published()->create(['ticket_price'=>3250])->addTickets(2);
 
@@ -159,8 +175,9 @@ class PurchaseTicketsTest extends TestCase
         ]);
 
         $this->assertResponseStatus(422);
-       // $order=$concert->orders()->where('email', 'john@gmail.com')->first();
+
         $this->assertFalse($concert->hasOrderFor('john@gmail.com'));
+        $this->assertEquals(2, $concert->ticketsRemaining());
     }
 
     public function test_cannot_purchase_more_tickets_than_remain(){
@@ -177,6 +194,41 @@ class PurchaseTicketsTest extends TestCase
         $this->assertFalse($concert->hasOrderFor('john@gmail.com'));///proveravamo da nije kreiran order
         $this->assertEquals(0, $this->payment_gateway->totalCharges());//da nije naplaćeno korisniku
         $this->assertEquals(50, $concert->ticketsRemaining()); //da je ostalo i dalje 50 karata
+    }
+
+    public function test_cannot_purchase_tickets_if_another_customer_is_already_trying_to_purchase(){
+        //$this->disableExceptionHandling();
+
+        $concert=Concert::factory()->published()->create(['ticket_price'=>1200])->addTickets(3);
+
+        $this->payment_gateway->beforeFirstCharge(function ($payment_gateway) use($concert){
+
+
+
+            $this->orderTickets($concert, [
+                'email'=>'personB@gmail.com',
+                'ticket_quantity'=>1,
+                'payment_token'=>$this->payment_gateway->getValidToken()
+            ]);
+
+            //dd(request()->all());
+
+            $this->assertResponseStatus(422);
+            $this->assertFalse($concert->hasOrderFor('personB@gmail.com'));///proveravamo da nije kreiran order
+            $this->assertEquals(0, $this->payment_gateway->totalCharges());//da nije naplaćeno korisniku
+        });
+
+        $this->orderTickets($concert, [
+            'email'=>'personA@gmail.com',
+            'ticket_quantity'=>3,
+            'payment_token'=>$this->payment_gateway->getValidToken()
+        ]);
+
+        //dd($concert->orders()->first()->toArray());
+
+        $this->assertEquals(3600, $this->payment_gateway->totalCharges());
+        $this->assertTrue($concert->hasOrderFor('personA@gmail.com'));
+        $this->assertEquals(3, $concert->ordersFor('personA@gmail.com')->first()->ticketsQuantity());
     }
 
 

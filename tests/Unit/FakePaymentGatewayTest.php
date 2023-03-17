@@ -19,7 +19,7 @@ class FakePaymentGatewayTest extends TestCase
     }
 
     //da očekujemo da bude exception
-    public function test_charges_with_invalid_payment_token_failed(){
+    protected function test_charges_with_invalid_payment_token_failed(){
         try{
             $payment_gateway=new FakePaymentGateway();
 
@@ -30,8 +30,22 @@ class FakePaymentGatewayTest extends TestCase
         }
 
         $this->fail();
+    }
+
+    public function test_running_a_hook_before__the_first_charge(){
+        $payment_gateway=new FakePaymentGateway();
+        $timesCallbackRan=0;
+
+        $payment_gateway->beforeFirstCharge(function($payment_gateway) use(&$timesCallbackRan){
+            $payment_gateway->charge(2500, $payment_gateway->getValidToken());
+
+            $timesCallbackRan ++;
+            $this->assertEquals(2500, $payment_gateway->totalCharges());
+        });
 
 
-
+        $payment_gateway->charge(2500, $payment_gateway->getValidToken());
+        $this->assertEquals(1, $timesCallbackRan);
+        $this->assertEquals(5000, $payment_gateway->totalCharges());
     }
 }

@@ -14,7 +14,7 @@ class ConcertTest extends TestCase
     use DatabaseMigrations; //logika:nije nam potrebno da bilo šta upisijemo u DB za ove testove
     //pa možemo samo da kreiramo objekat sa make
 
-    public function test_can_get_formated_date()
+    public function test_can_get_formatted_date()
     {
         //kreiraj koncert sa poznatim datumom
         //uzeti formatiran datum
@@ -104,5 +104,44 @@ class ConcertTest extends TestCase
 
         $this->fail('order succeded iako nemamo dovoljno karata 2');
 
+    }
+
+    public function test_can_reserve_available_tickets(){
+        $concert=Concert::factory()->published()->create()->addTickets(3);
+        $this->assertEquals(3, $concert->ticketsRemaining());
+
+        $reserved_tickets=$concert->reserveTickets(2);
+
+        $this->assertCount(2, $reserved_tickets);
+        $this->assertEquals(1,$concert->ticketsRemaining());
+
+    }
+
+    public function test_cannot_reserve_tickets_that_are_purchased(){
+        $concert=Concert::factory()->published()->create()->addTickets(3);
+        $concert->orderTickets('bo@gmail.com', 2);
+
+        try{
+            $concert->reserveTickets(2);
+        }catch (NotEnoughTicketsException $e){
+            $this->assertEquals(1, $concert->ticketsRemaining());
+            return;
+        }
+
+        $this->fail('reserving tickets ok even tho the thickets are sold');
+    }
+
+    public function test_cannot_reserve_tickets_that_are_reserved(){
+        $concert=Concert::factory()->published()->create()->addTickets(3);
+        $concert->reserveTickets(2);
+
+        try{
+            $concert->reserveTickets(2);
+        }catch (NotEnoughTicketsException $e){
+            $this->assertEquals(1, $concert->ticketsRemaining());
+            return;
+        }
+
+        $this->fail('reserving tickets ok even tho the thickets are reserved');
     }
 }
