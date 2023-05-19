@@ -15,6 +15,7 @@ class TicketFactory extends Factory
      */
     public function definition()
     {
+        //ovo je neki lazy create. sa ovim, laravel će kreirati koncert samo ako je potreban. ako hoćemo da koristimo postojeći, ovo se neće koristiti
          return [
              'concert_id'=>function(){
                 return Concert::factory()->create()->id;

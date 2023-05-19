@@ -52,7 +52,7 @@ class PurchaseTicketsTest extends TestCase
         $this->orderTickets($concert, [
             'email'=>'john@gmail.com',
             'ticket_quantity'=>3,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->assertResponseStatus(201);
@@ -84,7 +84,7 @@ class PurchaseTicketsTest extends TestCase
         $this->orderTickets($concert, [
             'email'=>'john@gmail.com',
             'ticket_quantity'=>3,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->assertResponseStatus(404);
@@ -102,7 +102,7 @@ class PurchaseTicketsTest extends TestCase
 
         $this->orderTickets($concert, [
             'ticket_quantity'=>3,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->customAssertValidationError('email');
@@ -117,7 +117,7 @@ class PurchaseTicketsTest extends TestCase
         $this->orderTickets($concert, [
             'email'=>'nije mail',
             'ticket_quantity'=>3,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->customAssertValidationError('email');
@@ -129,7 +129,7 @@ class PurchaseTicketsTest extends TestCase
 
         $this->orderTickets($concert, [
             'email'=>'nije mail',
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->customAssertValidationError('ticket_quantity');
@@ -142,7 +142,7 @@ class PurchaseTicketsTest extends TestCase
         $this->orderTickets($concert, [
             'email'=>'jeste@email.com',
             'ticket_quantity'=>0,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->customAssertValidationError('ticket_quantity');
@@ -187,7 +187,7 @@ class PurchaseTicketsTest extends TestCase
         $this->orderTickets($concert, [
             'email'=>'john@gmail.com',
             'ticket_quantity'=>51,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         $this->assertResponseStatus(422);
@@ -208,7 +208,7 @@ class PurchaseTicketsTest extends TestCase
             $this->orderTickets($concert, [
                 'email'=>'personB@gmail.com',
                 'ticket_quantity'=>1,
-                'payment_token'=>$this->payment_gateway->getValidToken()
+                'payment_token'=>$this->payment_gateway->getValidTestToken()
             ]);
 
             //dd(request()->all());
@@ -221,7 +221,7 @@ class PurchaseTicketsTest extends TestCase
         $this->orderTickets($concert, [
             'email'=>'personA@gmail.com',
             'ticket_quantity'=>3,
-            'payment_token'=>$this->payment_gateway->getValidToken()
+            'payment_token'=>$this->payment_gateway->getValidTestToken()
         ]);
 
         //dd($concert->orders()->first()->toArray());
